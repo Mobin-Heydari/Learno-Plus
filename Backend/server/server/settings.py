@@ -40,6 +40,9 @@ INSTALLED_APPS = [
     
     # Third Party Apps
     'rest_framework',
+    
+    # Custom Apps
+    'Users.apps.UsersConfig',
 ]
 
 MIDDLEWARE = [
