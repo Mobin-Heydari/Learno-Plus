@@ -1,6 +1,8 @@
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
 
+from .managers import UserManager
+
 
 
 
@@ -9,6 +11,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     class UserTypes(models.Choices):
         TEACHER = "Teacher"
         STUDENT = "Student"
+        ADMIN = "Admin"
 
         
     user_type = models.CharField(
@@ -17,7 +20,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     )
     
     phone = models.CharField(
-        max_length=11,
+        max_length=12,
         unique=True
     )
     
@@ -32,6 +35,8 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     is_active = models.BooleanField(default=True)
     is_admin = models.BooleanField(default=False)
+    
+    objects = UserManager()
     
     
     USERNAME_FIELD = "phone"
