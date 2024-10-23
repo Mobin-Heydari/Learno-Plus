@@ -1,6 +1,8 @@
 from django.db.models import Manager
 from django.contrib.auth.models import BaseUserManager
 
+from Profiles.models import UserProfile
+
 
 class UserManager(BaseUserManager):
     # Method to create user with provided credentials
@@ -17,6 +19,8 @@ class UserManager(BaseUserManager):
         
         user.set_password(password) 
         user.save(using = self._db) 
+        
+        user_profile = UserProfile.objects.create(user=user)
         
         return user 
 
