@@ -30,3 +30,19 @@ class TokenObtainSerializer(TokenObtainPairSerializer):
         
         # Return the token with the added custom claims
         return token
+
+
+
+
+class UserLoginSerializer(serializers.Serializer):
+    
+    email = serializers.EmailField(
+        write_only=True,
+        required=True
+    )
+    
+    password = serializers.CharField(
+        validators=[validate_password],
+        write_only=True,
+        required=True
+    )
