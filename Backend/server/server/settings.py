@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     # Custom Apps
     'Users.apps.UsersConfig',
     'Profiles.apps.ProfilesConfig',
+    'Authentication.apps.AuthenticationConfig',
 ]
 
 MIDDLEWARE = [
