@@ -1,6 +1,7 @@
 from django.contrib.auth.password_validation import validate_password
 
 from rest_framework import serializers
+from rest_framework import validators
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 from Users.models import User
@@ -48,3 +49,63 @@ class UserLoginSerializer(serializers.Serializer):
         write_only=True,
         required=True
     )
+
+class UserRegisterSerializer(serializers.Serializer):
+    """
+    Serializer for user registration
+    """
+    
+    # Email field with unique validator to ensure email is not already in use
+    email = serializers.EmailField(
+        validators=[
+            validators.UniqueValidator(queryset=User.objects.all())
+        ]
+    )
+    
+    # Phone field with unique validator to ensure phone is not already in use
+    phone = serializers.CharField(
+        validators=[
+            validators.UniqueValidator(queryset=User.objects.all())
+        ]
+    )
+    
+    # Username field with unique validator to ensure username is not already in use
+    username = serializers.CharField(
+        validators=[
+            validators.UniqueValidator(queryset=User.objects.all())
+        ]
+    )
+    
+    # Password field with custom validator and write-only access
+    password = serializers.CharField(
+        validators=[validate_password],
+        write_only=True,
+        required=True
+    )
+
+    # Password confirmation field with write-only access
+    password_conf = serializers.CharField(
+        write_only=True,
+        required=True
+    )
+
+    # User type field with write-only access
+    user_type = serializers.CharField(
+        write_only=True,
+        required=True
+    )
+    
+    
+    def validate(self, attrs):
+        """
+        Validate the serializer data
+        """
+        # Check if the password and password confirmation match
+        if attrs['password'] == attrs['password_conf']:
+            # Check if the password length is between 8 and 16 characters
+            if len(attrs['password']) >= 8 and len(attrs['password']) <= 16:
+                return attrs
+            else:
+                raise serializers.ValidationError({"Detail": "Password length should be between 8 to 16 characters."})
+        else:
+            raise serializers.ValidationError({"Detail": "Passwords fields didn't match."})
