@@ -1,6 +1,7 @@
 from django.contrib.auth import authenticate, login
 from django.shortcuts import get_object_or_404
 
+
 from rest_framework.views import APIView, Response
 from rest_framework import status 
 
@@ -9,7 +10,12 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from Users.models import User
 
-from .serializers import TokenObtainSerializer, UserLoginSerializer, UserRegisterSerializer
+from .serializers import TokenObtainSerializer, UserLoginSerializer, UserRegisterSerializer, OneTimePasswordSerializer
+
+from .models import  OneTimePassword
+
+
+
 
 
 
@@ -74,43 +80,25 @@ class UserLoginView(APIView):
 
 
 
-class UserRegisterView(APIView):
-    """
-    API View for user registration
-    """
+class OneTimePasswordView(APIView):
     def post(self, request):
-        """
-        Handle POST request for user registration
-        """
-        # Check if the user is not already authenticated
-        if request.user.is_authenticated == False:  # Simplified the condition
-            # Create a serializer instance with the request data
-            serializer = UserRegisterSerializer(data=request.data)
+        # Check if the user is not authenticated
+        if not request.user.is_authenticated:
+            # Create an instance of the serializer with the request data
+            serializer = OneTimePasswordSerializer(data=request.data)
             
             # Validate the serializer data
             if serializer.is_valid(raise_exception=True):
-               # Create a new user
-                user = User.objects.create_user(
-                    email = serializer.validated_data["email"],
-                    phone = serializer.validated_data["phone"],
-                    username = serializer.validated_data["username"],
-                    password = serializer.validated_data["password"],
-                    user_type = serializer.validated_data["user_type"]
-                )
-                user.save()
-                # Authenticate the user
-                authenticate(user)
-                # Generate a refresh token for the user
-                token = RefreshToken.for_user(user)
-                # Return a success response with the tokens
+                # Call the create method with the validated data
+                otp_data = serializer.create(validated_data=serializer.validated_data)  # Save and get the OTP data
+                
+                # Return a success response with the OTP details
                 return Response(
                     {
                         'Detail': {
-                            'Message': 'User created successfully',  # Return a success message
-                            'Token': {
-                                'refresh': str(token),  # Return the refresh token
-                                'access': str(token.access_token)  # Return the access token
-                            }
+                            'Message': 'Otp created successfully',
+                            'token': otp_data['token'],  # Assuming otp_data has a token attribute
+                            'code': otp_data['code']       # Assuming otp_data has a code attribute
                         }
                     }, status=status.HTTP_201_CREATED
                 )
@@ -120,3 +108,61 @@ class UserRegisterView(APIView):
         else:
             # Return an error response if the user is already logged in
             return Response({'Detail': 'You are already logged in'}, status=status.HTTP_400_BAD_REQUEST)
+
+class UserRegisterView(APIView):
+    """
+    API View to handle OneTimePassword verification and user creation
+    """
+    def post(self, request, token):
+        """
+        Handle POST request to verify OneTimePassword and create user
+        """
+        # Check if the user is not authenticated
+        if not request.user.is_authenticated:
+            # Get the OneTimePassword object from the database using the provided token
+            otp = get_object_or_404(OneTimePassword, token=token)
+            if otp:
+                # Serialize the request data using the UserRegisterSerializer
+                serializer = UserRegisterSerializer(data=request.data)
+                if serializer.is_valid(raise_exception=True):
+                    # Extract the code from the validated data
+                    code = serializer.validated_data['code']
+                    # Check if the OneTimePassword code matches the provided code
+                    if otp.code == code:
+                        # Saving the user data and getting user and tokens
+                        user_data = serializer.create(validated_data=serializer.validated_data, token=token)
+
+                        # Return a success response with user data and tokens
+                        return Response(
+                            {
+                                'Detail': {
+                                    'Message': 'User  created successfully',
+                                    'User': user_data['user'],
+                                    'Token': user_data['tokens']
+                                }
+                            }, status=status.HTTP_201_CREATED
+                        )
+                    else:
+                        # Return an error response if the OTP code is invalid
+                        return Response(
+                            {'Detail': 'OTP code is invalid'},
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
+                else:
+                    # Return an error response if the serializer is invalid
+                    return Response(
+                        {'Detail': serializer.errors},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+            else:
+                # Return an error response if the OTP does not exist
+                return Response(
+                    {'Detail': 'OTP does not exist'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+        else:
+            # Return an error response if the user is already authenticated
+            return Response(
+                {'Detail': 'You are already authenticated'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
