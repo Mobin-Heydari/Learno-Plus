@@ -20,3 +20,15 @@ class UserProfileSerializer(serializers.ModelSerializer):
         serializer = UserSerializer(instance=obj.user)
         
         return serializer.data
+    
+    
+    def update(self, instance, validated_data):
+        # Update the UserProfile fields
+        instance.bio = validated_data.get('bio', instance.bio)
+        instance.full_name = validated_data.get('full_name', instance.full_name)
+        instance.image = validated_data.get('image', instance.image)
+
+        # Save the changes to the UserProfile instance
+        instance.save()
+        
+        return instance
