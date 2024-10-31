@@ -81,7 +81,13 @@ class UserLoginView(APIView):
 
 
 class OneTimePasswordView(APIView):
+    """
+        API view to generate a one-time password 
+    """
     def post(self, request):
+        """
+        Handle POST request for one-time password auth
+        """
         # Check if the user is not authenticated
         if not request.user.is_authenticated:
             # Create an instance of the serializer with the request data
@@ -123,31 +129,21 @@ class UserRegisterView(APIView):
             otp = get_object_or_404(OneTimePassword, token=token)
             if otp:
                 # Serialize the request data using the UserRegisterSerializer
-                serializer = UserRegisterSerializer(data=request.data)
+                serializer = UserRegisterSerializer(data=request.data, context={'otp_token' : otp.token})
                 if serializer.is_valid(raise_exception=True):
-                    # Extract the code from the validated data
-                    code = serializer.validated_data['code']
-                    # Check if the OneTimePassword code matches the provided code
-                    if otp.code == code:
-                        # Saving the user data and getting user and tokens
-                        user_data = serializer.create(validated_data=serializer.validated_data, token=token)
+                    # Saving the user data and getting user and tokens
+                    user_data = serializer.create(validated_data=serializer.validated_data, token=token)
 
-                        # Return a success response with user data and tokens
-                        return Response(
-                            {
-                                'Detail': {
-                                    'Message': 'User  created successfully',
-                                    'User': user_data['user'],
-                                    'Token': user_data['tokens']
-                                }
-                            }, status=status.HTTP_201_CREATED
-                        )
-                    else:
-                        # Return an error response if the OTP code is invalid
-                        return Response(
-                            {'Detail': 'OTP code is invalid'},
-                            status=status.HTTP_400_BAD_REQUEST
-                        )
+                    # Return a success response with user data and tokens
+                    return Response(
+                        {
+                            'Detail': {
+                                'Message': 'User  created successfully',
+                                'User': user_data['user'],
+                                'Token': user_data['tokens']
+                            }
+                        }, status=status.HTTP_201_CREATED
+                    )  
                 else:
                     # Return an error response if the serializer is invalid
                     return Response(

@@ -14,7 +14,6 @@ from . models import OneTimePassword
 from random import randint
 
 
-
 class TokenObtainSerializer(TokenObtainPairSerializer):
     # Custom Token Obtain Serializer that inherits from TokenObtainPairSerializer
     
@@ -34,33 +33,29 @@ class TokenObtainSerializer(TokenObtainPairSerializer):
         token['joined_date'] = str(user.joined_date)  # Add the user's joined date to the token
         
         # User profiles claims
-        token['full_name'] = user.user_profile.full_name  # Add the user's first name to the token
+        token['full_name'] = user.user_profile.full_name  # Add the user's full name to the token
         token['bio'] = user.user_profile.bio  # Add the user's bio to the token
         
         # Return the token with the added custom claims
         return token
 
 
-
-
 class UserLoginSerializer(serializers.Serializer):
+    # Serializer for user login
     
     phone = serializers.CharField(
-        write_only=True,
-        required=True
+        write_only=True,  # This field is only used for input, not output
+        required=True  # This field is required
     )
     
     password = serializers.CharField(
-        validators=[validate_password],
-        write_only=True,
-        required=True
+        validators=[validate_password],  # Validate the password using Django's password validation
+        write_only=True,  # This field is only used for input, not output
+        required=True  # This field is required
     )
 
 
-
-
 class OneTimePasswordSerializer(serializers.Serializer):
-    
     """
     Serializer for user registration
     """
@@ -68,42 +63,42 @@ class OneTimePasswordSerializer(serializers.Serializer):
     # Email field with unique validator to ensure email is not already in use
     email = serializers.EmailField(
         validators=[
-            validators.UniqueValidator(queryset=User.objects.all())
+            validators.UniqueValidator(queryset=User .objects.all())  # Ensure email is unique in User model
         ]
     )
     
     # Phone field with unique validator to ensure phone is not already in use
     phone = serializers.CharField(
         validators=[
-            validators.UniqueValidator(queryset=User.objects.all())
+            validators.UniqueValidator(queryset=User .objects.all())  # Ensure phone is unique in User model
         ]
     )
     
     # Username field with unique validator to ensure username is not already in use
     username = serializers.CharField(
         validators=[
-            validators.UniqueValidator(queryset=User.objects.all())
+            validators.UniqueValidator(queryset=User .objects.all())  # Ensure username is unique in User model
         ]
     )
     
     # Password field with custom validator and write-only access
     password = serializers.CharField(
-        validators=[validate_password],
-        write_only=True,
-        required=True
+        validators=[validate_password],  # Validate the password using Django's password validation
+        write_only=True,  # This field is only used for input, not output
+        required=True  # This field is required
     )
 
     # Password confirmation field with write-only access
     password_conf = serializers.CharField(
-        validators=[validate_password],
-        write_only=True,
-        required=True
+        validators=[validate_password],  # Validate the password using Django's password validation
+        write_only=True,  # This field is only used for input, not output
+        required=True  # This field is required
     )
 
     # User type field with write-only access
     user_type = serializers.CharField(
-        write_only=True,
-        required=True
+        write_only=True,  # This field is only used for input, not output
+        required=True  # This field is required
     )
     
     
@@ -115,7 +110,7 @@ class OneTimePasswordSerializer(serializers.Serializer):
         if attrs['password'] == attrs['password_conf']:
             # Check if the password length is between 8 and 16 characters
             if len(attrs['password']) >= 8 and len(attrs['password']) <= 16:
-                return attrs
+                return attrs  # Return validated attributes if all checks pass
             else:
                 raise serializers.ValidationError({"Detail": "Password length should be between 8 to 16 characters."})
         else:
@@ -123,13 +118,12 @@ class OneTimePasswordSerializer(serializers.Serializer):
         
         
     def create(self, validated_data):
-        
-        # Generate a random code and token
-        code = randint(100000, 999999)
-        token = get_random_string(100)
+        # Generate a random code and token for one-time password
+        code = randint(100000, 999999)  # Generate a random 6-digit code
+        token = get_random_string(100)  # Generate a random token of length 100
         
         # Create a new OneTimePassword object with the validated data
-        otp = OneTimePassword.objects.create(
+        otp = OneTimePassword .objects.create(
             email = validated_data['email'],
             username = validated_data['username'],
             phone = validated_data['phone'],
@@ -142,6 +136,8 @@ class OneTimePasswordSerializer(serializers.Serializer):
         # Save the OneTimePassword object to the database
         otp.save()
         
+        otp.get_expiration()  # Get the expiration time of the OTP
+        
         # Returning the otp data
         return {
             'token': token,
@@ -150,14 +146,28 @@ class OneTimePasswordSerializer(serializers.Serializer):
         
         
 class UserRegisterSerializer(serializers.Serializer):
+    # Serializer for user registration using one-time password
     
     code  = serializers.CharField(max_length=6, min_length=6, required=True)
     
     
-    def create(self, validated_data, token):
-
+    def validate(self, attrs):
+        otp_token = self.context.get('otp_token')  # Get the OTP token from the context
         
-        otp = OneTimePassword.objects.get(token=token)
+        otp = OneTimePassword.objects.get(token=otp_token)  # Get the OneTimePassword object using the token
+        
+        if otp.status_validation() == 'ACT':  # Check if the OTP is active
+            if otp.code == attrs['code']:  # Check if the provided code matches the OTP code
+                return attrs  # Return validated attributes if all checks pass
+            else:
+                raise serializers.ValidationError({'code': 'Invalid OTP code.'})
+        else:
+            raise serializers.ValidationError('Inactive OTP')
+    
+    
+    def create(self, validated_data, token):
+        
+        otp = OneTimePassword.objects.get(token=token)  # Get the OneTimePassword object using the token
         
         # Create a new user using the OTP details
         user = User.objects.create_user(
@@ -168,11 +178,11 @@ class UserRegisterSerializer(serializers.Serializer):
             user_type=otp.user_type
         )
         
-        user.save()
-
+        user.save()  # Save the user to the database
+        
         # Generate tokens for the user
         refresh = RefreshToken.for_user(user)
-
+        
         # Return user data and tokens
         return {
             'user': {
