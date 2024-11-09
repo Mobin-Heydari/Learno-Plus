@@ -6,15 +6,38 @@ from django.db import models
 
 class Course(models.Model):
     
+    class PriceStatus(models.Choices):
+        FREE = 'FREE'
+        PAID = 'PAID'
+        
     title = models.CharField(max_length=50)
     
     slug = models.SlugField(max_length=80)
+    
+    description = models.TextField()
+    
+    image = models.ImageField(upload_to="Courses/Images/")
+    
+    video = models.FileField(upload_to="Courses/Videos/")
     
     teacher = models.ForeignKey(
         'Users.User',
         on_delete = models.CASCADE,
         related_name = 'courses'
     )
+    
+    price_status = models.CharField(
+        max_length=5,
+        choices=PriceStatus.choices,
+        default=PriceStatus.FREE
+    )
+    
+    price = models.BigIntegerField(default=0)
+    
+    
+    
+    updated = models.DateField(auto_now=True)
+    created = models.DateField(auto_now_add=True)
     
     
     class Meta:
@@ -61,21 +84,3 @@ class DescriptionCourse(models.Model):
     class Meta:
         verbose_name = "Description Course"
         verbose_name_plural = "Descriptions Course"
-        
-
-
-class CourseSession(models.Model):
-    
-    course = models.ForeignKey(
-        Course,
-        on_delete = models.CASCADE,
-        related_name = 'Session'
-    )
-    
-    video = models.FileField(upload_to="Courses/Sesion/Videos")
-    
-    title = models.CharField(max_length=60)
-    
-    class Meta:
-        verbose_name = "SesionCourse"
-        verbose_name_plural = "SesionesCourse"
