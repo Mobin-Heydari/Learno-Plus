@@ -62,3 +62,20 @@ class DescriptionCourse(models.Model):
         verbose_name = "Description Course"
         verbose_name_plural = "Descriptions Course"
         
+
+
+class CourseSession(models.Model):
+    
+    course = models.ForeignKey(
+        Course,
+        on_delete = models.CASCADE,
+        related_name = 'Session'
+    )
+    
+    video = models.FileField(upload_to="Courses/Sesion/Videos")
+    
+    title = models.CharField(max_length=60)
+    
+    class Meta:
+        verbose_name = "SesionCourse"
+        verbose_name_plural = "SesionesCourse"
